@@ -24,17 +24,32 @@ byte rowPins[ROWS] = {9, 8, 7, 6}; // define row pins
 byte colPins[COLS] = {5, 4, 3, 2}; // define column pins
 Keypad customKeypad = Keypad(makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS); // Create keypad class
 
+// Seven Segment Display setup
+int latchPin = 28;  // RCLK of HC595
+int clockPin = 22; // SRCLK of HC595
+int dataPin = 23;  // SER of HC595
+const int digitPins[2] = {27, 26}; // Pins for the 2 digits {
+const byte segmentPinsOnes[10] = {0b11111100, 0b01100000, 0b11011010, 0b11110010, 0b01100110, 0b10110110, 0b10111110, 0b11100000, 0b11111110, 0b11100110};
+const byte segmentPinsTens[10] = {0b00000000, 0b01100000, 0b11011010, 0b11110010, 0b01100110, 0b10110110, 0b10111110, 0b11100000, 0b11111110, 0b11100110};
 
 
 
 
 void setup(){
   
-  Serial.begin(9600);
+  Serial.begin(9600); // Intialize serial port
   pinMode(13, OUTPUT);
 
-  cli();//Clear interrupt flag bit (disable interrupts)
+  pinMode(latchPin, OUTPUT); 
+  pinMode(clockPin, OUTPUT);
+  pinMode(dataPin, OUTPUT);
+  for (int i = 0; i < 2; i++) { 
+    pinMode(digitPins[i], OUTPUT);
+    digitalWrite(digitPins[i], LOW); // Turn off all digits initially
+   }
 
+
+  cli();//Clear interrupt flag bit (disable interrupts)
   TCCR1A = 0;// clear TCCR1A 
   TCCR1B = 0;// clear TCCR1B
   TCNT1  = 0;// Clear the 16 bit timer/counter (TCNT1H and TCNT1L)
@@ -42,10 +57,10 @@ void setup(){
   TCCR1B |= (1 << WGM12); // Set bit 2 of WGM13:0 for CTC mode (Clear Timer on Compare Match)
   TCCR1B |= (1 << CS12) | (1 << CS10); // Set CS12 and CS10 for 1024 prescaler 
   TIMSK1 |= (1 << OCIE1A); // Enable output compare A match interrupt
-
   sei();//Set interrupt flag bit (re-enable interrupts)
-
 }
+
+
 
 ISR(TIMER1_COMPA_vect){ //Interrupt routine
 
@@ -60,7 +75,6 @@ ISR(TIMER1_COMPA_vect){ //Interrupt routine
   counter--;
 }
 
-
 void loop(){
 
   char customKey = customKeypad.getKey(); // Get key pressed
@@ -72,5 +86,23 @@ void loop(){
 
   if (customKey){ // If key is pressed
     Serial.println(customKey); // Print key to serial monitor
-} 
+  } 
+}
+
+void displayNumber(int num) { 
+
+  // Display Tens digit (most left)
+  digitalWrite(latchPin,LOW); 
+  digitalWrite(digitPins[0], HIGH);
+  shiftOut(dataPin, clockPin, MSBFIRST, segmentPinsTens[num / 10]);
+  digitalWrite(latchPin, HIGH);
+  digitalWrite(digitPins[0], LOW);
+
+  // Display Ones digit (most right)
+  digitalWrite(latchPin,LOW);
+  digitalWrite(digitPins[1], HIGH);
+  shiftOut(dataPin, clockPin, MSBFIRST, segmentPinsOnes[num % 10]);
+  digitalWrite(latchPin, HIGH);
+  digitalWrite(digitPins[1], LOW);
+
 }
