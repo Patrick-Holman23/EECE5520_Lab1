@@ -89,7 +89,8 @@ void loop(){
   } 
 }
 
-void displayNumber(int num) { 
+
+void displayNumber(int num) { // Function for seven segment display
 
   // Display Tens digit (most left)
   digitalWrite(latchPin,LOW); 
