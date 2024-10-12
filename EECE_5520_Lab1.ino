@@ -7,18 +7,18 @@
 //initial variables
 bool setup_status = 1; // bit to set for startup routine status - initialized as 1 for startup and will clear on completion
 bool onehz_toggle = 1; // toggle bool for 1hz interrupt routine
-bool halfhz_toggle = 0; // toggle bool for .5hz interrupt routine
+bool twohz_toggle = 0; // toggle bool for .5hz interrupt routine
 bool red_startup_flash = 1; // bit to set if red light1 should be flashing 1s ON 1s OFF - initialzied as 1 for startup routine
-bool green1_halfhz_flash = 0; // bit to set if red light1 should be flashing .5s ON .5s OFF - initialzied as 1 for startup routine
-bool red1_halfhz_flash = 0;
-bool green2_halfhz_flash = 0;
-bool red2_halfhz_flash = 0;
+bool green1_twohz_flash = 0; // bit to set if green light1 should be flashing .5s ON .5s OFF
+bool red1_twohz_flash = 0; // bit to set if red light1 should be flashing .5s ON .5s OFF
+bool green2_twohz_flash = 0; // bit to set if green light2 should be flashing .5s ON .5s OFF
+bool red2_twohz_flash = 0; // bit to set if red light2 should be flashing .5s ON .5s OFF
 int counter = 0; // Counter for light sequence time tracking and seven segment display
 
-int TR1 = 0; // first digit of red light time - input from user
-int TG1 = 0; // first digit of green light time - input from user
-int TR = 0; // time for red light set by user
-int TG = 0; // time for green light set by user
+int TR1 = 0; // first digit of red light time - set by user
+int TG1 = 0; // first digit of green light time - set by user
+int TR = 0; // full time for red light - set by user
+int TG = 0; // full time for green light - set by user
 
 // Seven Segment Display setup
 int latchPin = 24;  // RCLK of HC595
@@ -27,7 +27,7 @@ int dataPin = 23;  // SER of HC595
 const int digitPins[2] = {26, 27}; // Pins for the 2 digits { Tens digit, Ones digit}
 const byte segmentPinsOnes[10] = {0b11111100, 0b01100000, 0b11011010, 0b11110010, 0b01100110, 0b10110110, 0b10111110, 0b11100000, 0b11111110, 0b11100110};
 const byte segmentPinsTens[10] = {0b00000000, 0b01100000, 0b11011010, 0b11110010, 0b01100110, 0b10110110, 0b10111110, 0b11100000, 0b11111110, 0b11100110};
-bool display_toggle = 0;
+bool display_toggle = 0; // Used to set which digit is displayed
 
 enum {keyA, keyTR1, keyTR, keyPoundR, keyB, keyTG1, keyTG, keyPoundG, keyStar, Red, Green2_3s, Red3s, Green, Green3s, Yellow};
 unsigned char trafficState;
@@ -74,6 +74,7 @@ void setup(){
    }
 
   cli(); //Clear interrupt flag bit (disable interrupts)
+  // 1hz interrupt for time tracking and red startup light flashing
   TCCR1A = 0; // clear TCCR1A 
   TCCR1B = 0; // clear TCCR1B
   TCNT1  = 0; // Clear the 16 bit timer/counter (TCNT1H and TCNT1L)
@@ -82,18 +83,20 @@ void setup(){
   TCCR1B |= (1 << CS12) | (1 << CS10); // Set CS12 and CS10 for 1024 prescaler 
   TIMSK1 |= (1 << OCIE1A); // Enable output compare A match interrupt
 
+  // 2hz interrupt for red and green light flashing for 3 seconds before light change
   TCCR3A = 0; // clear TCCR2A 
   TCCR3B = 0; // clear TCCR2B
   TCNT3  = 0; // Clear the 16 bit timer/counter (TCNT1H and TCNT1L)
-  OCR3A = 31249; // set 8 bit output compare register to 0.5hz -> (16MHz / 256 prescalar) * 0.5seconds - 1 = 31249 bits
+  OCR3A = 31249; // set 8 bit output compare register to 2hz -> (16MHz / 256 prescalar) * 0.5seconds - 1 = 31249 bits
   TCCR3B |= (1 << WGM12); // Set bit 2 of WGM13:0 for CTC mode (Clear Timer on Compare Match)
   TCCR3B |= (1 << CS12); // Set CS12 256 prescaler 
   TIMSK3 |= (1 << OCIE1A); // Enable output compare A match interrupt
 
+  // 120hz interrupt for seven segment display
   TCCR4A = 0; // clear TCCR2A 
   TCCR4B = 0; // clear TCCR2B
   TCNT4  = 0; // Clear the 16 bit timer/counter (TCNT1H and TCNT1L)
-  OCR4A = 16666; // set 8 bit output compare register to 160hz -> (16MHz / 8prescalar ) / 120hz - 1 ~ 16666 bits
+  OCR4A = 16666; // set 8 bit output compare register to 120hz -> (16MHz / 8prescalar ) / 120hz - 1 ~ 16666 bits
   TCCR4B |= (1 << WGM12); // Set bit 2 of WGM13:0 for CTC mode (Clear Timer on Compare Match)
   TCCR4B |= (1 << CS11); // Set CS11 8 prescaler 
   TIMSK4 |= (1 << OCIE1A); // Enable output compare A match interrupt
@@ -125,51 +128,51 @@ ISR(TIMER1_COMPA_vect){ // 1Hz Interrupt Routine
 
 ISR(TIMER3_COMPA_vect){
 
-  if (red1_halfhz_flash == 1){
-    if (halfhz_toggle){ // If toggle is 1
+  if (red1_twohz_flash == 1){
+    if (twohz_toggle){ // If toggle is 1
     digitalWrite(RED_LED1, HIGH); // Turn on LED
-    halfhz_toggle = 0; // reset toggle
+    twohz_toggle = 0; // reset toggle
     }
 
     else{ // If toggle is 0
     digitalWrite(RED_LED1, LOW); // Turn off LED
-    halfhz_toggle = 1; // Set toggle
+    twohz_toggle = 1; // Set toggle
     }
   }
 
-  if (green1_halfhz_flash == 1){
-    if (halfhz_toggle){ // If toggle is 1
+  if (green1_twohz_flash == 1){
+    if (twohz_toggle){ // If toggle is 1
     digitalWrite(GREEN_LED1, HIGH); // Turn on LED
-    halfhz_toggle = 0; // reset toggle
+    twohz_toggle = 0; // reset toggle
     }
 
     else{ // If toggle is 0
     digitalWrite(GREEN_LED1, LOW); // Turn off LED
-    halfhz_toggle = 1; // Set toggle
+    twohz_toggle = 1; // Set toggle
     }
   }
 
-  if (red2_halfhz_flash == 1){
-    if (halfhz_toggle){ // If toggle is 1
+  if (red2_twohz_flash == 1){
+    if (twohz_toggle){ // If toggle is 1
     digitalWrite(RED_LED2, HIGH); // Turn on LED
-    halfhz_toggle = 0; // reset toggle
+    twohz_toggle = 0; // reset toggle
     }
 
     else{ // If toggle is 0
     digitalWrite(RED_LED2, LOW); // Turn off LED
-    halfhz_toggle = 1; // Set toggle
+    twohz_toggle = 1; // Set toggle
     }
   }
 
-  if (green2_halfhz_flash == 1){
-    if (halfhz_toggle){ // If toggle is 1
+  if (green2_twohz_flash == 1){
+    if (twohz_toggle){ // If toggle is 1
     digitalWrite(GREEN_LED2, HIGH); // Turn on LED
-    halfhz_toggle = 0; // reset toggle
+    twohz_toggle = 0; // reset toggle
     }
 
     else{ // If toggle is 0
     digitalWrite(GREEN_LED2, LOW); // Turn off LED
-    halfhz_toggle = 1; // Set toggle
+    twohz_toggle = 1; // Set toggle
     }
   }
 }
@@ -318,7 +321,7 @@ void loop(){
       digitalWrite(GREEN_LED2, HIGH);
       if (counter <= 6) {
         TCNT3 = 0; // Reset timer3 register
-        boolean halfhz_toggle = 0; // Make this zero so LED is off after first half second
+        boolean twohz_toggle = 0; // Make this zero so LED is off after first half second
         trafficState = Green2_3s;
       }
       else {  
@@ -326,14 +329,14 @@ void loop(){
       }
 
     case Green2_3s:
-      green2_halfhz_flash = 1;
+      green2_twohz_flash = 1;
       digitalWrite(BUZZER, HIGH);
       if (counter <= 3) {
         digitalWrite(GREEN_LED2, LOW);
         digitalWrite(BUZZER, LOW);
-        green2_halfhz_flash = 0;
+        green2_twohz_flash = 0;
         TCNT3 = 0; // Reset timer3 register
-        boolean halfhz_toggle = 0; // Make this zero so LED is off after first half second
+        boolean twohz_toggle = 0; // Make this zero so LED is off after first half second
         trafficState = Red3s; 
         break;
       }
@@ -342,11 +345,11 @@ void loop(){
       }
 
     case Red3s: // Start flashing red every half a second
-      red1_halfhz_flash = 1;
+      red1_twohz_flash = 1;
       digitalWrite(BUZZER, HIGH);
       digitalWrite(YELLOW_LED2, HIGH);
       if (counter == 0) { 
-        red1_halfhz_flash = 0;
+        red1_twohz_flash = 0;
         digitalWrite(RED_LED1, LOW);
         digitalWrite(YELLOW_LED2, LOW);
         digitalWrite(BUZZER, LOW);
@@ -364,7 +367,7 @@ void loop(){
       digitalWrite(RED_LED2, HIGH);
       if (counter <= 3) {
         TCNT3 = 0; // Reset timer3 register
-        boolean halfhz_toggle = 0; // Make this zero so LED is off after first half second
+        boolean twohz_toggle = 0; // Make this zero so LED is off after first half second
         trafficState = Green3s; 
         break;
       }
@@ -373,10 +376,10 @@ void loop(){
       }
 
     case Green3s: // Start flashing red every half a second
-      green1_halfhz_flash = 1;
+      green1_twohz_flash = 1;
       digitalWrite(BUZZER, HIGH);
       if (counter == 0) { 
-        green1_halfhz_flash = 0;
+        green1_twohz_flash = 0;
         digitalWrite(GREEN_LED1, LOW);
         digitalWrite(BUZZER, LOW);
         counter = 3;
@@ -390,12 +393,12 @@ void loop(){
     case Yellow: // Start flashing red every half a second
       digitalWrite(YELLOW_LED1, HIGH);
       digitalWrite(BUZZER, HIGH);
-      red2_halfhz_flash = 1;
+      red2_twohz_flash = 1;
       if (counter == 0) {
         digitalWrite(YELLOW_LED1, LOW);
         digitalWrite(RED_LED2, LOW);
         digitalWrite(BUZZER, LOW);
-        red2_halfhz_flash = 0;
+        red2_twohz_flash = 0;
         counter = TR; 
         trafficState = Red; 
         break;
