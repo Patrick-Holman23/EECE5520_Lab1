@@ -7,7 +7,7 @@
 //initial variables
 bool setup_status = 1; // bit to set for startup routine status - initialized as 1 for startup and will clear on completion
 bool onehz_toggle = 1; // toggle bool for 1hz interrupt routine
-bool twohz_toggle = 0; // toggle bool for .5hz interrupt routine
+bool twohz_toggle = 0; // toggle bool for 2hz interrupt routine
 bool red_startup_flash = 1; // bit to set if red light1 should be flashing 1s ON 1s OFF - initialzied as 1 for startup routine
 bool green1_twohz_flash = 0; // bit to set if green light1 should be flashing .5s ON .5s OFF
 bool red1_twohz_flash = 0; // bit to set if red light1 should be flashing .5s ON .5s OFF
@@ -181,10 +181,9 @@ ISR(TIMER4_COMPA_vect){
 
   clearDisplay(); // Turn off digits
 
-  // delayMicroseconds(1000); // Small delay for FETs to turn off
+  // delayMicroseconds(1000); // Small delay for FET to turn off
 
-  // Toggle display bool
-  display_toggle ^= 1;
+  display_toggle ^= 1; // Toggle display bool
 
   // Shift out screen bits
   if(display_toggle == 0){
@@ -221,7 +220,7 @@ void loop(){
     case keyTR1: // Get the first digit for red light time
       Serial.println("Waiting for keyTR1");
       customKey = customKeypad.getKey();
-      if (customKey >= '0' && customKey <= '9') { 
+      if (customKey >= '0' && customKey <= '9') { // If key pressed is an integer
         TR1 = int(customKey - '0');
         trafficState = keyTR; 
         break;
@@ -233,7 +232,7 @@ void loop(){
     case keyTR: // Get the second digit for red light time
       Serial.println("Waiting for full KeyTR");
       customKey = customKeypad.getKey();
-      if (customKey >= '0' && customKey <= '9') { 
+      if (customKey >= '0' && customKey <= '9') { // If key pressed is an integer
         TR = TR1*10 + int(customKey - '0');
         trafficState = keyPoundR; 
         break;
@@ -267,7 +266,7 @@ void loop(){
     case keyTG1: // Get the first digit for green light time
       Serial.println("Waiting for keyTG1");
       customKey = customKeypad.getKey();
-      if (customKey >= '0' && customKey <= '9') { 
+      if (customKey >= '0' && customKey <= '9') { // If key pressed is an integer
         TG1 = int(customKey - '0');
         trafficState = keyTG; 
         break;
@@ -279,7 +278,7 @@ void loop(){
     case keyTG: // Get the second digit for green light time
       Serial.println("Waiting for keyTG");
       customKey = customKeypad.getKey();
-      if (customKey >= '0' && customKey <= '9') {
+      if (customKey >= '0' && customKey <= '9') { // If key pressed is an integer
         TG = TG1*10 + int(customKey - '0');
         trafficState = keyPoundG; 
         break;
@@ -303,7 +302,7 @@ void loop(){
       Serial.println("Waiting for keyStar");
       customKey = customKeypad.getKey();
       if (customKey == '*') {
-        red_startup_flash = 0; // Clear flashing red light
+        red_startup_flash = 0; // Stop flashing red light
         digitalWrite(RED_LED1, LOW);
         digitalWrite(RED_LED2, LOW);
         TCNT1  = 0; // reset timer1 register so that the full red time will occur
@@ -317,9 +316,9 @@ void loop(){
 
     case Red: // Start Red light sequence
       Serial.println("Starting Red light sequence");
-      digitalWrite(RED_LED1, HIGH);
-      digitalWrite(GREEN_LED2, HIGH);
-      if (counter <= 6) {
+      digitalWrite(RED_LED1, HIGH); 
+      digitalWrite(GREEN_LED2, HIGH); // Turn on green light for opposing traffic
+      if (counter <= 6) { // When counter = 6 the green light for opposing traffic is 3 seconds away from changing
         TCNT3 = 0; // Reset timer3 register
         boolean twohz_toggle = 0; // Make this zero so LED is off after first half second
         trafficState = Green2_3s;
@@ -329,10 +328,10 @@ void loop(){
       }
 
     case Green2_3s:
-      green2_twohz_flash = 1;
-      digitalWrite(BUZZER, HIGH);
+      green2_twohz_flash = 1; // Start flashing green light for opposing traffic
+      digitalWrite(BUZZER, HIGH); // Activate buzzer
       if (counter <= 3) {
-        digitalWrite(GREEN_LED2, LOW);
+        digitalWrite(GREEN_LED2, LOW); 
         digitalWrite(BUZZER, LOW);
         green2_twohz_flash = 0;
         TCNT3 = 0; // Reset timer3 register
@@ -347,7 +346,7 @@ void loop(){
     case Red3s: // Start flashing red every half a second
       red1_twohz_flash = 1;
       digitalWrite(BUZZER, HIGH);
-      digitalWrite(YELLOW_LED2, HIGH);
+      digitalWrite(YELLOW_LED2, HIGH); // Turn on yellow light for opposing traffic since forward traffic is 3 seconds away from turning green
       if (counter == 0) { 
         red1_twohz_flash = 0;
         digitalWrite(RED_LED1, LOW);
@@ -364,7 +363,7 @@ void loop(){
     case Green: // Start Red light sequence
       Serial.println("Starting Green light sequence");
       digitalWrite(GREEN_LED1, HIGH);
-      digitalWrite(RED_LED2, HIGH);
+      digitalWrite(RED_LED2, HIGH); // Turn on red light for opposing traffic since forward traffic has green
       if (counter <= 3) {
         TCNT3 = 0; // Reset timer3 register
         boolean twohz_toggle = 0; // Make this zero so LED is off after first half second
