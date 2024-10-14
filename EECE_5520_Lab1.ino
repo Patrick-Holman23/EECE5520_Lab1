@@ -360,7 +360,7 @@ void loop(){
         break; 
       }
 
-    case Green: // Start Red light sequence
+    case Green: // Start Green light sequence
       Serial.println("Starting Green light sequence");
       digitalWrite(GREEN_LED1, HIGH);
       digitalWrite(RED_LED2, HIGH); // Turn on red light for opposing traffic since forward traffic has green
@@ -374,7 +374,7 @@ void loop(){
         break; 
       }
 
-    case Green3s: // Start flashing red every half a second
+    case Green3s: // Start flashing green every half a second
       green1_twohz_flash = 1;
       digitalWrite(BUZZER, HIGH);
       if (counter == 0) { 
@@ -389,7 +389,7 @@ void loop(){
         break; 
       }
 
-    case Yellow: // Start flashing red every half a second
+    case Yellow: // Start Yellow light sequence
       digitalWrite(YELLOW_LED1, HIGH);
       digitalWrite(BUZZER, HIGH);
       red2_twohz_flash = 1;
